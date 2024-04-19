@@ -114,34 +114,33 @@ class CarModel():
         self.angrad is the ramp angle in radians
         self.ymag is the ramp height in m
         """
-        self.results = []
+        self.results = None
         self.tmax = 3.0  # limit of timespan for simulation in seconds
         self.t = np.linspace(0, self.tmax, 200)
         self.tramp = 1.0  # time to traverse the ramp in seconds
-        self.angrad = 0.1
+        self.angrad = np.deg2rad(45.0)  # ramp angle in radians
         self.ymag = 6.0 / (12 * 3.3)  # ramp height in meters.  default is 0.1515 m
-        self.yangdeg = 45.0  # ramp angle in degrees.  default is 45
-        self.results = None
+        self.yangdeg = 45.0  # ramp angle in degrees
 
-        #set default values for the properties of the quarter car model
-        self.m1 = 1800 # mass of car body in kg
-        self.m2 = 450#  # mass of wheel in kg
-        self.c1 = #$JES MISSING CODE#  # damping coefficient in N*s/m
-        self.k1 = #$JES MISSING CODE#  # spring constant of suspension in N/m
-        self.k2 = #$JES MISSING CODE#  # spring constant of tire in N/m
-        self.v = #$JES MISSING CODE#  # velocity of car in kph
+        # Default values for the properties of the quarter car model
+        self.m1 = 450  # mass of car body in kg
+        self.m2 = 50  # mass of wheel in kg
+        self.c1 = 1500  # damping coefficient in N*s/m
+        self.k1 = 15000  # spring constant of suspension in N/m
+        self.k2 = 50000  # spring constant of tire in N/m
+        self.v = 60  # velocity of car in kph
 
+        # Minimum and maximum values for spring constants
+        self.mink1 = 10000  # Minimum spring constant for suspension
+        self.maxk1 = 30000  # Maximum spring constant for suspension
+        self.mink2 = 30000  # Minimum spring constant for tire
+        self.maxk2 = 70000  # Maximum spring constant for tire
 
-        self.mink1 = #$JES MISSING CODE#  #If I jack up my car and release the load on the spring, it extends about 3 inches
-        self.maxk1 = #$JES MISSING CODE#  #What would be a good value for a soft spring vs. a stiff spring?
-        self.mink2 = #$JES MISSING CODE#  #Same question for the shock absorber.
-        self.maxk2 = #$JES MISSING CODE#
-        self.accel =None
-        self.accelMax = #$JES MISSING CODE#
-        self.accelLim = #$JES MISSING CODE#
+        self.accel = None
+        self.accelMax = 2.0 * 9.81  # Max acceleration, 2g where g is the gravity constant
+        self.accelLim = 2.0 * 9.81  # Acceleration limit, 2g
+
         self.SSE = 0.0
-
-
 class CarView():
     def __init__(self, args):
         self.input_widgets, self.display_widgets = args
@@ -273,7 +272,7 @@ class CarController():
         self.model = CarModel()
         self.view = CarView(args)
 
-        self.chk_IncludeAccel=qtw.QCheckBox()
+        #self.chk_IncludeAccel=qtw.QCheckBox()
 
     def ode_system(self, X, t):
         # define the forcing function equation for the linear ramp
@@ -284,14 +283,17 @@ class CarController():
         else:
             y = self.model.ymag
 
-        x1 = #$JES MISSING CODE#  # car position in vertical direction
-        x1dot = #$JES MISSING CODE#  # car velocity  in vertical direction
-        x2 = #$JES MISSING CODE#  # wheel position in vertical direction
-        x2dot = #$JES MISSING CODE#  # wheel velocity in vertical direction
+            # Unpack the state vector
+        x1, x1dot, x2, x2dot = X
 
-        # write the non-trivial equations in vertical direction
-        x1ddot = #$JES MISSING CODE#)
-        x2ddot = #$JES MISSING CODE#
+            # Calculate the forces according to Hooke's Law and damping
+        force_spring1 = -self.model.k1 * (x1 - x2)  # force by the suspension spring
+        force_damper = -self.model.c1 * (x1dot - x2dot)  # force by the damper
+        force_spring2 = -self.model.k2 * (x2 - y)  # force by the tire spring
+
+            # Newton's second law for the car body and the wheel
+        x1ddot = (force_spring1 + force_damper) / self.model.m1
+        x2ddot = (force_spring2 - force_spring1 - force_damper) / self.model.m2
 
         # return the derivatives of the input state vector
         return [x1dot, x1ddot, x2dot, x2ddot]
@@ -301,30 +303,33 @@ class CarController():
         I will first set the basic properties of the car model and then calculate the result
         in another function doCalc.
         """
-        #Step 1.  Read from the widgets
-        self.model.m1 = #$JES MISSING CODE#
-        self.model.m2 = #$JES MISSING CODE#
-        self.model.c1 = #$JES MISSING CODE#
-        self.model.k1 = #$JES MISSING CODE#
-        self.model.k2 = #$JES MISSING CODE#
-        self.model.v = #$JES MISSING CODE#
+        # Step 1. Read from the widgets
+        self.model.m1 = float(self.le_m1.text())  # Read and convert the car body mass from QLineEdit
+        self.model.m2 = float(self.le_m2.text())  # Read and convert the wheel mass from QLineEdit
+        self.model.c1 = float(self.le_c1.text())  # Read and convert the damping coefficient from QLineEdit
+        self.model.k1 = float(self.le_k1.text())  # Read and convert the suspension spring constant from QLineEdit
+        self.model.k2 = float(self.le_k2.text())  # Read and convert the tire spring constant from QLineEdit
+        self.model.v = float(self.le_v.text())  # Read and convert the car speed from QLineEdit
 
-        #recalculate min and max k values
-        self.mink1=#$JES MISSING CODE#
-        self.maxk1=#$JES MISSING CODE#
-        self.mink2=#$JES MISSING CODE#
-        self.maxk2=#$JES MISSING CODE#
+        # recalculate min and max k values
+        self.model.mink1 = 10000  # Assume a minimum k1 value, e.g., based on static compression data or typical values
+        self.model.maxk1 = 50000  # Assume a maximum k1 value
+        self.model.mink2 = 5000  # Assume a minimum k2 value
+        self.model.maxk2 = 20000  # Assume a maximum k2 value
 
-        ymag=6.0/(12.0*3.3)   #This is the height of the ramp in m
-        if ymag is not None:
-            self.model.ymag = ymag
-        self.model.yangdeg = float(self.le_ang.text())
-        self.model.tmax = float(self.le_tmax.text())
-        if(doCalc):
-            self.doCalc()
+        ymag = 6.0 / (12.0 * 3.3)  # This is the height of the ramp in meters
+        self.model.ymag = ymag
+        self.model.yangdeg = float(self.le_ang.text())  # Ramp angle in degrees
+        self.model.tmax = float(self.le_tmax.text())  # Max time for the plot and simulation
+
+        if doCalc:
+            self.doCalc()  # Perform calculations if requested
+
+        # Calculate the sum of squared errors without optimizing
         self.SSE((self.model.k1, self.model.c1, self.model.k2), optimizing=False)
-        self.view.updateView(self.model)
 
+        # Update the view to reflect new model data
+        self.view.updateView(self.model)
     def setWidgets(self, w):
         self.view.setWidgets(w)
         self.chk_IncludeAccel=self.view.chk_IncludeAccel
@@ -375,15 +380,26 @@ class CarController():
         Step 3:  optimize the suspension
         :return:
         """
-        #Step 1:
-        #$JES MISSING CODE HERE$
-        self.calculate(doCalc=False)
-        #Step 2:
-        #JES MISSING CODE HERE$
-        x0= # create a numpy array with initial values for k1, c1, and k2
-        #Step 3:
-        #JES MISSING CODE HERE$
-        answer= #use the Nelder-Mead method to minimize the SSE function (our objective function)
+        # Step 1: Set parameters based on GUI inputs
+        self.calculate(doCalc=False)  # Update model parameters from GUI without running calculations
+
+        # Step 2: Initial guess for k1, c1, k2
+        x0 = [self.model.k1, self.model.c1, self.model.k2]  # Use current model values as initial guess
+
+        # Step 3: Optimize the suspension using the Nelder-Mead method
+        result = minimize(self.SSE, x0, method='Nelder-Mead', options={'xatol': 1e-8, 'disp': True})
+
+        # Check if the optimization was successful and update model parameters
+        if result.success:
+            self.model.k1, self.model.c1, self.model.k2 = result.x
+            print("Optimization succeeded:", result.message)
+        else:
+            print("Optimization failed:", result.message)
+
+        # Recalculate dynamics with optimized parameters
+        self.calculate(doCalc=True)
+
+        # Update the GUI to reflect new optimized values
         self.view.updateView(self.model)
 
     def SSE(self, vals, optimizing=True):
