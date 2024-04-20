@@ -1,4 +1,4 @@
-#region imports
+region imports
 from scipy.integrate import odeint
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
@@ -114,27 +114,27 @@ class CarModel():
         self.angrad is the ramp angle in radians
         self.ymag is the ramp height in m
         """
-        self.results = None
+        self.results = []
         self.tmax = 3.0  # limit of timespan for simulation in seconds
         self.t = np.linspace(0, self.tmax, 200)
         self.tramp = 1.0  # time to traverse the ramp in seconds
-        self.angrad = np.deg2rad(45.0)  # ramp angle in radians
+        self.angrad = 0.1  # ramp angle in radians
         self.ymag = 6.0 / (12 * 3.3)  # ramp height in meters.  default is 0.1515 m
         self.yangdeg = 45.0  # ramp angle in degrees
-
+        self.results = None
         # Default values for the properties of the quarter car model
         self.m1 = 450  # mass of car body in kg
-        self.m2 = 50  # mass of wheel in kg
-        self.c1 = 1500  # damping coefficient in N*s/m
+        self.m2 = 20  # mass of wheel in kg
+        self.c1 = 4500 # damping coefficient in N*s/m
         self.k1 = 15000  # spring constant of suspension in N/m
-        self.k2 = 50000  # spring constant of tire in N/m
-        self.v = 60  # velocity of car in kph
+        self.k2 = 90000  # spring constant of tire in N/m
+        self.v = 120 # velocity of car in kph
 
         # Minimum and maximum values for spring constants
-        self.mink1 = 10000  # Minimum spring constant for suspension
-        self.maxk1 = 30000  # Maximum spring constant for suspension
-        self.mink2 = 30000  # Minimum spring constant for tire
-        self.maxk2 = 70000  # Maximum spring constant for tire
+        self.mink1 = (self.m1 * 9.81) / (0.1524)  # 6" * 25.4 / 1000
+        self.maxk1 = (self.m1 * 9.81) / (0.0762) # 3" * 25.4 / 1000
+        self.mink2 = ((self.m1 + self.m2) * 9.81) / (0.0381)  # Minimum spring constant for tire
+        self.maxk2 = ((self.m1 + self.m2) * 9.81) / (0.01905)  # Maximum spring constant for tire
 
         self.accel = None
         self.accelMax = 2.0 * 9.81  # Max acceleration, 2g where g is the gravity constant
@@ -312,10 +312,10 @@ class CarController():
         self.model.v = float(self.le_v.text())  # Read and convert the car speed from QLineEdit
 
         # recalculate min and max k values
-        self.model.mink1 = 10000  # Assume a minimum k1 value, e.g., based on static compression data or typical values
-        self.model.maxk1 = 50000  # Assume a maximum k1 value
-        self.model.mink2 = 5000  # Assume a minimum k2 value
-        self.model.maxk2 = 20000  # Assume a maximum k2 value
+        self.mink1 = (self.model.m1 * 9.81) / (0.1524)  # 6" * 25.4 / 1000
+        self.maxk1 = (self.model.m1 * 9.81) / (0.0762)  # 3" * 25.4 / 1000
+        self.mink2 = ((self.model.m1 + self.model.m2) * 9.81) / (0.0381)  # Minimum spring constant for tire
+        self.maxk2 = ((self.model.m1 + self.model.m2) * 9.81) / (0.01905)  # Maximum spring constant for tire
 
         ymag = 6.0 / (12.0 * 3.3)  # This is the height of the ramp in meters
         self.model.ymag = ymag
@@ -384,20 +384,21 @@ class CarController():
         self.calculate(doCalc=False)  # Update model parameters from GUI without running calculations
 
         # Step 2: Initial guess for k1, c1, k2
-        x0 = [self.model.k1, self.model.c1, self.model.k2]  # Use current model values as initial guess
-
+        x0 = np.array([self.model.mink1, self.model.c1, self.model.mink2])  # Use current model values as initial guess
+        print(f"Optimizing from initial values: {x0}")
         # Step 3: Optimize the suspension using the Nelder-Mead method
-        result = minimize(self.SSE, x0, method='Nelder-Mead', options={'xatol': 1e-8, 'disp': True})
+        result = minimize(self.SSE, x0, method='Nelder-Mead')
 
         # Check if the optimization was successful and update model parameters
         if result.success:
             self.model.k1, self.model.c1, self.model.k2 = result.x
             print("Optimization succeeded:", result.message)
+            print(f"Optimized values: {result.x}")
         else:
             print("Optimization failed:", result.message)
 
         # Recalculate dynamics with optimized parameters
-        self.calculate(doCalc=True)
+        #self.calculate(doCalc=True)
 
         # Update the GUI to reflect new optimized values
         self.view.updateView(self.model)
