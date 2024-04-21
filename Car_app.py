@@ -22,10 +22,15 @@ class MainWindow(qtw.QWidget, Ui_Form):
         self.setupUi(self)
 
         #setup car controller
-        input_widgets = (self.le_m1, self.le_v, self.le_k1, self.le_c1, self.le_m2, self.le_k2, self.le_ang, \
-                         self.le_tmax, self.chk_IncludeAccel)
-        display_widgets = (self.gv_Schematic, self.chk_LogX, self.chk_LogY, self.chk_LogAccel, \
-        self.chk_ShowAccel, self.lbl_MaxMinInfo, self.layout_horizontal_main)
+        input_widgets = (self.le_m1, self.le_v,
+                         self.le_k1, self.le_c1,
+                         self.le_m2, self.le_k2,
+                         self.le_ang, self.le_tmax,
+                         self.chk_IncludeAccel)
+        display_widgets = (self.gv_Schematic, self.chk_LogX,
+                           self.chk_LogY, self.chk_LogAccel,
+                           self.chk_ShowAccel, self.lbl_MaxMinInfo,
+                           self.layout_horizontal_main)
 
         #instantiate the car controller
         self.controller = CarController((input_widgets, display_widgets))
@@ -40,6 +45,7 @@ class MainWindow(qtw.QWidget, Ui_Form):
         self.show()
 
     def doOptimize(self):
+        app = qtw.QApplication.instance()
         app.setOverrideCursor(qtc.Qt.WaitCursor)
         self.controller.OptimizeSuspension()
         app.restoreOverrideCursor()
