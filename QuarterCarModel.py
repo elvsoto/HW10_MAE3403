@@ -1,4 +1,4 @@
-region imports
+#region imports
 from scipy.integrate import odeint
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
@@ -7,11 +7,17 @@ import math
 from PyQt5 import QtWidgets as qtw
 from PyQt5 import QtCore as qtc
 from PyQt5 import QtGui as qtg
+import sys
+
 
 #these imports are necessary for drawing a matplot lib graph on my GUI
 #no simple widget for this exists in QT Designer, so I have to add the widget in code.
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
+
+from Car_GUI import Ui_Form
+
+
 #endregion
 
 #region class definitions
@@ -263,11 +269,15 @@ class CarController():
         """
         self.input_widgets, self.display_widgets = args
         #unpack widgets with same names as they have on the GUI
-        self.le_m1, self.le_v, self.le_k1, self.le_c1, self.le_m2, self.le_k2, self.le_ang, \
-         self.le_tmax, self.chk_IncludeAccel = self.input_widgets
+        (self.le_m1, self.le_v,
+         self.le_k1, self.le_c1,
+         self.le_m2, self.le_k2, self.le_ang,
+         self.le_tmax, self.chk_IncludeAccel) = self.input_widgets
 
-        self.gv_Schematic, self.chk_LogX, self.chk_LogY, self.chk_LogAccel, \
-        self.chk_ShowAccel, self.lbl_MaxMinInfo, self.layout_horizontal_main = self.display_widgets
+        (self.gv_Schematic, self.chk_LogX,
+         self.chk_LogY, self.chk_LogAccel,
+         self.chk_ShowAccel, self.lbl_MaxMinInfo,
+         self.layout_horizontal_main) = self.display_widgets
 
         self.model = CarModel()
         self.view = CarView(args)
@@ -447,8 +457,34 @@ class CarController():
 #endregion
 
 def main():
-    QCM = CarController()
+    # Create the Qt Application
+    app = qtw.QApplication(sys.argv)
+
+    # Create and show the form
+    form = qtw.QWidget()
+    ui = Ui_Form()
+    ui.setupUi(form)
+    form.show()
+
+    # Extract widgets from the UI
+    input_widgets = (ui.le_m1, ui.le_v,
+                     ui.le_k1, ui.le_c1,
+                     ui.le_m2, ui.le_k2,
+                     ui.le_ang, ui.le_tmax,
+                     ui.chk_IncludeAccel)
+    display_widgets = (ui.gv_Schematic, ui.chk_LogX,
+                       ui.chk_LogY, ui.chk_LogAccel,
+                       ui.chk_ShowAccel, ui.lbl_MaxMinInfo,
+                       ui.layout_horizontal_main)
+
+    argss = (input_widgets, display_widgets)
+    # Create an instance of CarController
+    QCM = CarController(argss)
+    # Perform calculations
     QCM.doCalc()
+    # Execute the application
+    sys.exit(app.exec_())
+   
 
 if __name__ == '__main__':
     main()
